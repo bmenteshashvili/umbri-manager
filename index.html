@@ -55,7 +55,12 @@ td.p{white-space:nowrap;text-align:right;font-weight:600}td.r{white-space:nowrap
 .vn{display:block;font-size:13px;color:var(--mute)}
 .st{font-size:12px;padding:2px 8px;border-radius:99px;margin-left:6px;white-space:nowrap;color:#fff}.st.sent{background:var(--blue)}.st.replied{background:var(--good)}.st.off{background:var(--mute)}
 .stats{font-size:14px;line-height:1.6;margin:14px 0 6px;padding:10px 12px;border-radius:8px;background:var(--land)}.live{font-size:12px;color:var(--mute)}
-.pin{cursor:pointer}td small{display:block}td b{font-weight:600}
+.pin{cursor:pointer}
+.mapwrap svg{cursor:grab;touch-action:none}.mapwrap svg.drag{cursor:grabbing}
+.zoom{position:absolute;right:14px;bottom:14px;z-index:2;display:flex;flex-direction:column;gap:6px}
+.zoom button{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 22px Barlow,sans-serif;cursor:pointer}
+.zoom button:focus-visible{outline:2px solid var(--red)}
+.hint{position:absolute;left:18px;bottom:14px;z-index:2;font-size:12px;color:var(--mute);background:var(--panel);padding:4px 10px;border-radius:6px;pointer-events:none}td small{display:block}td b{font-weight:600}
 .nav button[data-k=sent]{margin-top:8px;border-top:1px solid var(--line);border-radius:0 0 8px 8px}.src{font-size:13px;color:var(--mute)}.src a{color:inherit}
 @media(max-width:1000px){.app{grid-template-columns:1fr;height:auto}aside.nav{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line);padding:14px}
 .nav .brand{width:100%}.nav .sub{margin:2px 0 8px}.legend{display:none}.mapwrap{height:58vh;min-height:340px}.panel{border-left:0}}
@@ -64,7 +69,7 @@ td.p{white-space:nowrap;text-align:right;font-weight:600}td.r{white-space:nowrap
 <div class="app">
 <aside class="nav"><div class="brand"><h1>UMBRI tour</h1><p class="sub">2027 · 3 nights in one region</p></div><div class="stats" id="stats"></div><div id="nav" style="display:contents"></div>
 <div class="legend"><span><i></i>Tour route (by road)</span><span><i class="f"></i>Flight from Georgia</span><span>◇ Venue · <span style="color:var(--blue)">◆</span> emailed · <span style="color:var(--good)">◆</span> replied</span><span>Leg colour: green ≤ 200 km, amber over 200 km</span></div></aside>
-<main class="mapwrap"><div class="maptitle" id="mt"></div><svg id="map" role="img" aria-label="Map of the selected tour region"></svg></main>
+<main class="mapwrap"><div class="maptitle" id="mt"></div><svg id="map" role="img" aria-label="Map of the selected tour region"></svg><div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Show the whole route">⟲</button></div><div class="hint">Scroll or pinch to zoom · drag to move</div></main>
 <div class="panel" id="panel"></div>
 </div>
 <script>
@@ -158,7 +163,7 @@ const safeUrl=u=>/^https:\/\//.test(u||'')?u:(/^http:\/\//.test(u||'')?u.replace
 const hm=s=>{const m=Math.round(s/60);return Math.floor(m/60)+'h'+String(m%60).padStart(2,'0')};
 const arrive=s=>{const m=600+Math.round(s/60)+(s>7200?30:0);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
 const slug=n=>String(n).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z]+/g,'');
-let cur=null,route=null,vb=null,anim=null,tgt=null,selV=null,SENT=SENT0.slice(),live='Updated 25 Nov 2026, 21:20 (Tbilisi)';
+let cur=null,route=null,vb=null,anim=null,tgt=null,selV=null,SENT=SENT0.slice(),live='Updated 25 Nov 2026, 21:30 (Tbilisi)';
 const GEONAME={'Türkiye':'Turkey','Czech Republic':'Czechia','United Kingdom':'United Kingdom','Bosnia and Herzegovina':'Bosnia and Herz.','North Macedonia':'Macedonia'};
 const land=GEO.map(c=>`<path class="c" data-n="${esc(c.n)}" d="${c.p.map(r=>'M'+r.map(p=>P(p).map(v=>v.toFixed(1)).join(',')).join('L')+'Z').join('')}"/>`).join('');
 const nav=document.getElementById('nav');
@@ -191,11 +196,12 @@ function draw(){const c=COUNTRIES[cur];const z=tgt[2]/(svg.clientWidth||800);con
  const cs=c?new Set([...c.cities,'rustavi']):new Set(['rustavi']);
  o+=[...cs].map(k=>{const C=CITIES[k],[x,y]=P(C.ll),on=rt&&rt.stops.includes(k);return `<circle cx="${x}" cy="${y}" r="${(on?1.6:1)*r}" fill="${C.home?'var(--ink)':on?'var(--red)':'var(--mute)'}"/><text class="lbl" style="font-size:${fs*(on?1.08:.92)}px;stroke-width:${3*z}px" x="${x+6*z}" y="${y-6*z}">${esc(C.n)}${C.home?' (home)':''}</text>`}).join('');
  o+=pinned().map(v=>{const [x,y]=P([v.lng,v.lat]),s=(v.id===selV?2.6:1.8)*r;return `<path class="pin" data-v="${esc(v.id)}" d="M${x},${y-s}L${x+s},${y}L${x},${y+s}L${x-s},${y}Z" fill="${v.id===selV?'var(--red)':FILL[vStatus(v)]}" stroke="var(--ink)" stroke-width="${1.2*z}"><title>${esc(v.name)} · ${esc(v.city)}</title></path>`}).join('');
+ if(tgt[2]<70){const [vx,vy,vw,vh]=tgt;o+=pinned().filter(v=>v.id!==selV).map(v=>{const [x,y]=P([v.lng,v.lat]);return x>vx&&x<vx+vw&&y>vy&&y<vy+vh?`<text class="lbl" style="font-size:${fs*.9}px;stroke-width:${3*z}px" x="${x+7*z}" y="${y+14*z}">${esc(v.name)}</text>`:''}).join('')}
  if(selV){const v=VENUES.find(x=>x.id===selV);if(v&&v.lat){const [x,y]=P([v.lng,v.lat]);o+=`<text class="lbl" style="font-size:${fs}px;stroke-width:${3*z}px" x="${x+8*z}" y="${y+16*z}">${esc(v.name)}</text>`}}
  if(c)o+=Object.entries(AIRPORTS).map(([k,A])=>{const [x,y]=P(A.ll);return `<rect x="${x-r}" y="${y-r}" width="${2*r}" height="${2*r}" fill="none" stroke="var(--ink)" stroke-width="${1.2*z}"/><text class="lbl a" style="font-size:${fs*.85}px;stroke-width:${3*z}px" x="${x+6*z}" y="${y+14*z}">${k}</text>`}).join('');
  svg.innerHTML=o;const sel=new Set(c?[c.geo,...(rt?rt.stops.map(s=>CITIES[s].cc).filter(Boolean):[])]:[]);svg.querySelectorAll('.c').forEach(p=>{if(sel.has(p.dataset.n))p.classList.add('sel');if(p.dataset.n==='Georgia')p.classList.add('home')});
  document.getElementById('mt').textContent=c?(c.name+(rt?' · '+rt.name:' · all venues')):'All venues · emails sent'}
-svg.addEventListener('click',e=>{const p=e.target.closest('.pin');if(!p)return;const v=VENUES.find(x=>x.id===p.dataset.v);if(!v)return;const k=keyOf(v.country);selV=v.id;if(cur!==k&&cur!=='sent'){location.hash=k}else{render(true)}});
+svg.addEventListener('click',e=>{if(moved)return;const p=e.target.closest('.pin');if(!p)return;const v=VENUES.find(x=>x.id===p.dataset.v);if(!v)return;const k=keyOf(v.country);selV=v.id;if(cur!==k&&cur!=='sent'){location.hash=k}else{render(true)}});
 function weekends(c){const good=[2,3,4,5,9,10,11],fl=Object.fromEntries(c.flags),out={};const d=new Date(Date.UTC(2027,0,1));while(d.getUTCDay()!==5)d.setUTCDate(d.getUTCDate()+1);
  for(;d.getUTCFullYear()===2027;d.setUTCDate(d.getUTCDate()+7)){const m=d.getUTCMonth()+1;if(!good.includes(m))continue;const iso=d.toISOString().slice(0,10),s=new Date(d);s.setUTCDate(s.getUTCDate()+2);
   const lab=d.getUTCDate()+'–'+s.getUTCDate()+(s.getUTCMonth()!==d.getUTCMonth()?' '+s.toLocaleString('en',{month:'short',timeZone:'UTC'}):'');(out[m]??=[]).push({lab,flag:fl[iso]})}return out}
@@ -228,11 +234,27 @@ function render(keepView){renderNav();if(cur==='sent'){renderSent();return}
  document.querySelectorAll('.route').forEach(b=>b.addEventListener('click',()=>{route=b.dataset.r;selV=null;render()}));
  const fb=()=>rt?rbox(rt):cbox(c);bindCards(fb);
  const v=selV&&VENUES.find(x=>x.id===selV);
- if(!keepView||!tgt)setVB(fit(v&&v.lat?[v.lng-1.6,v.lat-1,v.lng+1.6,v.lat+1]:fb()));else if(v&&v.lat)setVB(fit([v.lng-1.6,v.lat-1,v.lng+1.6,v.lat+1]));
+ if(!keepView||!tgt)setVB(fit(v&&v.lat&&v.country===c.name?[v.lng-1.6,v.lat-1,v.lng+1.6,v.lat+1]:fb()));
  draw();if(v){const el=document.querySelector(`.vcard[data-v="${CSS.escape(v.id)}"]`);el&&el.scrollIntoView({block:'center'})}}
-function go(){ensureCountries();const k=location.hash.slice(1);const nk=k==='sent'||COUNTRIES[k]?k:'romania';if(nk!==cur){cur=nk;route=null}render()}
+function go(){ensureCountries();const k=location.hash.slice(1);const nk=k==='sent'||COUNTRIES[k]?k:'romania';if(nk!==cur){cur=nk;route=null;const sv=selV&&VENUES.find(x=>x.id===selV);if(!sv||(nk!=='sent'&&sv.country!==COUNTRIES[nk].name))selV=null}render()}
+
+/* pan & zoom */
+let moved=false,redrawT=0;const ptrs=new Map();let start=null;
+const settle=()=>{clearTimeout(redrawT);redrawT=setTimeout(()=>{tgt=vb.slice();draw()},140)};
+const toSvg=(cx,cy)=>{const r=svg.getBoundingClientRect();return [vb[0]+(cx-r.left)/r.width*vb[2],vb[1]+(cy-r.top)/r.height*vb[3]]};
+function zoomAt(f,cx,cy){cancelAnimationFrame(anim);const w=Math.min(800,Math.max(1.5,vb[2]*f)),k=w/vb[2];const [px,py]=cx==null?[vb[0]+vb[2]/2,vb[1]+vb[3]/2]:toSvg(cx,cy);vb=[px-(px-vb[0])*k,py-(py-vb[1])*k,vb[2]*k,vb[3]*k];svg.setAttribute('viewBox',vb.join(' '));settle()}
+svg.addEventListener('wheel',e=>{e.preventDefault();zoomAt(Math.exp(e.deltaY*(e.ctrlKey?0.01:0.0018)),e.clientX,e.clientY)},{passive:false});
+svg.addEventListener('dblclick',e=>{e.preventDefault();zoomAt(0.5,e.clientX,e.clientY)});
+svg.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,[e.clientX,e.clientY]);moved=false;cancelAnimationFrame(anim);start={vb:vb.slice(),pts:new Map(ptrs)}});
+svg.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,[e.clientX,e.clientY]);const r=svg.getBoundingClientRect(),s=start.vb[2]/r.width;
+ if(ptrs.size===1){const [x0,y0]=start.pts.get(e.pointerId)||[e.clientX,e.clientY];const dx=e.clientX-x0,dy=e.clientY-y0;if(!moved&&Math.hypot(dx,dy)<4)return;if(!moved){moved=true;svg.classList.add('drag');try{svg.setPointerCapture(e.pointerId)}catch(_){}}vb=[start.vb[0]-dx*s,start.vb[1]-dy*s,start.vb[2],start.vb[3]];svg.setAttribute('viewBox',vb.join(' '))}
+ else if(ptrs.size===2){moved=true;const [a,b]=[...ptrs.values()],[a0,b0]=[...start.pts.values()];if(!a0||!b0)return;const d=Math.hypot(a[0]-b[0],a[1]-b[1]),d0=Math.hypot(a0[0]-b0[0],a0[1]-b0[1])||1;const k=Math.min(800,Math.max(1.5,start.vb[2]*d0/d))/start.vb[2];const mx=(a0[0]+b0[0])/2,my=(a0[1]+b0[1])/2,px=start.vb[0]+(mx-r.left)*s,py=start.vb[1]+(my-r.top)*s;vb=[px-(px-start.vb[0])*k,py-(py-start.vb[1])*k,start.vb[2]*k,start.vb[3]*k];svg.setAttribute('viewBox',vb.join(' '))}});
+const up=e=>{ptrs.delete(e.pointerId);svg.classList.remove('drag');if(moved)settle();start={vb:vb.slice(),pts:new Map(ptrs)};setTimeout(()=>{if(!ptrs.size)moved=false},0)};
+svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
+document.getElementById('zin').onclick=()=>zoomAt(0.6);document.getElementById('zout').onclick=()=>zoomAt(1.6);
+document.getElementById('zfit').onclick=()=>{selV=null;vb=vb;render()};
 addEventListener('hashchange',go);
-const ro=new ResizeObserver(()=>{if(cur&&tgt){vb=null;render(false)}});ro.observe(svg);
+let lastW=0;const ro=new ResizeObserver(()=>{const w=svg.clientWidth;if(cur&&tgt&&Math.abs(w-lastW)>40){lastW=w;vb=null;render(false)}});ro.observe(svg);
 go();
 /* live data from the Google Sheet */
 const rowsOf=ev=>{let p=ev&&ev.result&&ev.result.payload;if(p&&p.content&&!p.values)p=p.content;if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){p=null}}return p&&Array.isArray(p.values)?p.values:null};
@@ -242,7 +264,7 @@ function toVenues(rows){const H=rows[0].map(h=>String(h).toLowerCase());const ix
 function toSent(rows){return rows.slice(1).filter(r=>r[2]||r[5]).map(r=>({date:String(r[0]??''),id:String(r[1]??''),name:String(r[2]??''),city:String(r[3]??''),country:String(r[4]??''),email:String(r[5]??''),subject:String(r[6]??''),link:String(r[7]??''),status:String(r[8]??''),follow:String(r[9]??''),reply:String(r[10]??''),summary:String(r[11]??'')}))}
 const stamp=()=>new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
 (async()=>{let mcp=null;try{mcp=window.claude&&await window.claude.use('mcp')}catch(e){}
- if(!mcp){live='Updated 25 Nov 2026, 21:20 (Tbilisi)';renderNav();return}
+ if(!mcp){live='Updated 25 Nov 2026, 21:30 (Tbilisi)';renderNav();return}
  live='Connecting to your Google Sheet…';renderNav();
  const opts={refetchInterval:120000};
  const onErr=ev=>{if(ev&&ev.type==='error'){live='Live update failed · showing last data';renderNav()}};
