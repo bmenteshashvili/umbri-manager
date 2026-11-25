@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UMBRI Tour Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a tour manager's working board, calm and factual
+   IDEA: a road atlas with the route drawn in red marker
+   PICTURE: the map itself, centre stage, zooming to the chosen country
+   COLOUR and TYPE: graphite/bone with one marker red; Barlow Condensed like road signage, Barlow body
+   LAYOUT: countries left, map centre, plan right; stacks on narrow screens */
+:root{color-scheme:light dark;--bg:light-dark(#f2f0eb,#131517);--panel:light-dark(#fbfaf7,#1b1e21);--ink:light-dark(#17191c,#ebe8e1);--mute:light-dark(#62666c,#9a9ea3);--line:light-dark(#d9d5cc,#2c3035);--land:light-dark(#e4e0d6,#22262a);--land2:light-dark(#d2ccbf,#30353a);--sea:light-dark(#dfe5e8,#0e1113);--red:#d23a2a;--good:light-dark(#2f7a45,#5cbf7b);--blue:light-dark(#3b74c4,#6fa0e6);--warn:light-dark(#a3610f,#e0a24a)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Barlow,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:'Barlow Condensed',sans-serif;font-weight:600;margin:0;line-height:1.05}
+h1{font-size:34px}h2{font-size:24px;margin-bottom:10px}h3{font-size:19px}
+.app{display:grid;grid-template-columns:220px minmax(0,1fr) 400px;height:100vh}
+aside.nav{border-right:1px solid var(--line);padding:22px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;background:var(--panel)}
+.nav .sub{color:var(--mute);font-size:14px;margin:4px 0 18px}
+.nav button{all:unset;cursor:pointer;display:flex;gap:12px;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:8px;font:600 20px 'Barlow Condensed',sans-serif;min-height:44px}
+.nav button:hover{background:var(--land)}.nav button[aria-current=true]{background:var(--ink);color:var(--bg)}
+.nav button:focus-visible,.route:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.nav small{font:500 13px Barlow;opacity:.7}
+.legend{margin-top:auto;font-size:13px;color:var(--mute);display:grid;gap:6px}
+.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:8px;background:var(--red)}
+.legend i.f{background:none;border-top:2px dashed var(--mute);height:0}
+.mapwrap{position:relative;background:var(--sea)}
+.mapwrap svg{position:absolute;inset:0;width:100%;height:100%}
+.maptitle{position:absolute;z-index:2;background:var(--panel);padding:4px 10px;border-radius:6px;left:18px;top:14px;font:600 15px Barlow;color:var(--mute);pointer-events:none}
+.c{fill:var(--land);stroke:var(--bg);stroke-width:.6;vector-effect:non-scaling-stroke}.c.sel{fill:var(--land2)}.c.home{fill:light-dark(#e9d3cd,#3a2724)}
+.lbl{font:600 13px Barlow;fill:var(--ink);paint-order:stroke;stroke:var(--sea);stroke-width:3px;stroke-linejoin:round}
+.lbl.k{font:600 12px Barlow;fill:var(--red)}.lbl.a{fill:var(--mute);font-weight:500}
+.panel{border-left:1px solid var(--line);overflow-y:auto;padding:22px 22px 40px;background:var(--panel)}
+.panel section{padding:18px 0;border-top:1px solid var(--line)}.panel section:first-of-type{border-top:0;padding-top:4px}
+.lead{color:var(--mute);font-size:15px;margin:6px 0 0}
+table{width:100%;border-collapse:collapse;font-size:15px}td{padding:8px 4px;border-top:1px solid var(--line);vertical-align:top}
+td.p{white-space:nowrap;text-align:right;font-weight:600}td.r{white-space:nowrap;font-weight:600}td small{display:block;color:var(--mute);font-size:13px}
+.route{all:unset;display:block;width:100%;cursor:pointer;padding:12px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px}
+.route[aria-pressed=true]{border-color:var(--red);box-shadow:inset 3px 0 0 var(--red)}
+.route .t{font-size:13px;color:var(--mute)}
+.legs{list-style:none;padding:0;margin:10px 0 6px;display:grid;gap:6px;font-size:14px}
+.legs li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline}
+.night{font:600 13px Barlow;color:var(--mute);white-space:nowrap}
+.km{white-space:nowrap;font-weight:600}.km.ok{color:var(--good)}.km.long{color:var(--warn)}
+.route p{margin:6px 0 0;font-size:14px;color:var(--mute)}
+.months{display:grid;gap:10px}.mo b{font:600 15px Barlow;display:block;margin-bottom:4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{font-size:13px;padding:4px 9px;border-radius:99px;background:var(--land);white-space:nowrap}
+.chip.x{background:none;border:1px dashed var(--warn);color:var(--warn)}
+.empty{font-size:14px;padding:10px 12px;border-radius:8px;background:var(--land);margin-top:10px}
+.ven{display:flex;flex-wrap:wrap;gap:6px}
+.vcard{all:unset;display:block;width:100%;cursor:pointer;padding:12px 14px;border:1px solid var(--line);border-radius:10px;margin-top:10px;font-size:14px}
+.vcard[aria-pressed=true]{border-color:var(--ink);box-shadow:inset 3px 0 0 var(--ink)}
+.vcard b{font:600 18px 'Barlow Condensed',sans-serif}.vcard .m{color:var(--mute)}.vcard dl{display:grid;grid-template-columns:5.5em 1fr;gap:2px 8px;margin:8px 0 0}.vcard dt{color:var(--mute)}.vcard dd{margin:0;overflow-wrap:anywhere}
+.vcard a{color:inherit}.conf{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--land);white-space:nowrap;margin-left:6px}
+.vn{display:block;font-size:13px;color:var(--mute)}
+.st{font-size:12px;padding:2px 8px;border-radius:99px;margin-left:6px;white-space:nowrap;color:#fff}.st.sent{background:var(--blue)}.st.replied{background:var(--good)}.st.off{background:var(--mute)}
+.stats{font-size:14px;line-height:1.6;margin:14px 0 6px;padding:10px 12px;border-radius:8px;background:var(--land)}.live{font-size:12px;color:var(--mute)}
+.pin{cursor:pointer}td small{display:block}td b{font-weight:600}
+.nav button[data-k=sent]{margin-top:8px;border-top:1px solid var(--line);border-radius:0 0 8px 8px}.src{font-size:13px;color:var(--mute)}.src a{color:inherit}
+@media(max-width:1000px){.app{grid-template-columns:1fr;height:auto}aside.nav{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line);padding:14px}
+.nav .brand{width:100%}.nav .sub{margin:2px 0 8px}.legend{display:none}.mapwrap{height:58vh;min-height:340px}.panel{border-left:0}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<div class="app">
+<aside class="nav"><div class="brand"><h1>UMBRI tour</h1><p class="sub">2027 · 3 nights in one region</p></div><div class="stats" id="stats"></div><div id="nav" style="display:contents"></div>
+<div class="legend"><span><i></i>Tour route (by road)</span><span><i class="f"></i>Flight from Georgia</span><span>◇ Venue · <span style="color:var(--blue)">◆</span> emailed · <span style="color:var(--good)">◆</span> replied</span><span>Leg colour: green ≤ 200 km, amber over 200 km</span></div></aside>
+<main class="mapwrap"><div class="maptitle" id="mt"></div><svg id="map" role="img" aria-label="Map of the selected tour region"></svg></main>
+<div class="panel" id="panel"></div>
+</div>
+<script>
+const GEO=__GEO__;
+__DATA__
+{
+const SHEET='182Hj8IScJ6VgfnCQl76GRxLvB0Q66_3zAz_uOz6TxB4';
+const R=Math.PI/180,P=([lo,la])=>[lo*10,-Math.log(Math.tan(Math.PI/4+la*R/2))/R*10];
+const svg=document.getElementById('map');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeUrl=u=>/^https:\/\//.test(u||'')?u:(/^http:\/\//.test(u||'')?u.replace(/^http:/,'https:'):'');
+const hm=s=>{const m=Math.round(s/60);return Math.floor(m/60)+'h'+String(m%60).padStart(2,'0')};
+const arrive=s=>{const m=600+Math.round(s/60)+(s>7200?30:0);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
+const slug=n=>String(n).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z]+/g,'');
+let cur=null,route=null,vb=null,anim=null,tgt=null,selV=null,SENT=SENT0.slice(),live='Saved copy (connect to see live data)';
+const GEONAME={'Türkiye':'Turkey','Czech Republic':'Czechia','United Kingdom':'United Kingdom','Bosnia and Herzegovina':'Bosnia and Herz.','North Macedonia':'Macedonia'};
+const land=GEO.map(c=>`<path class="c" data-n="${esc(c.n)}" d="${c.p.map(r=>'M'+r.map(p=>P(p).map(v=>v.toFixed(1)).join(',')).join('L')+'Z').join('')}"/>`).join('');
+const nav=document.getElementById('nav');
+const keyOf=name=>{for(const [k,c] of Object.entries(COUNTRIES))if(c.name===name)return k;return slug(name)};
+function ensureCountries(){for(const v of VENUES){if(!v.country)continue;const k=keyOf(v.country);if(!COUNTRIES[k])COUNTRIES[k]={name:v.country,geo:GEONAME[v.country]||v.country,box:null,cities:[],flights:[],routes:[],flags:[],dyn:1}}}
+const sentFor=v=>SENT.find(s=>(s.id&&s.id===v.id)||(s.email&&v.email&&s.email.toLowerCase()===v.email.toLowerCase()));
+const vStatus=v=>{const s=sentFor(v);if(!s)return 'todo';const t=(s.status||'').toLowerCase();return t.includes('repl')?'replied':t.includes('bounc')||t.includes('declin')?'off':'sent'};
+const vIn=city=>VENUES.filter(v=>v.city===city);
+function renderNav(){const ks=Object.keys(COUNTRIES).sort((a,b)=>(COUNTRIES[a].dyn||0)-(COUNTRIES[b].dyn||0)||COUNTRIES[a].name.localeCompare(COUNTRIES[b].name));
+ nav.innerHTML=ks.map(k=>{const c=COUNTRIES[k];return `<button data-k="${esc(k)}" aria-current="${k===cur}">${esc(c.name)}<small>${VENUES.filter(v=>v.country===c.name).length} venues</small></button>`}).join('')+`<button data-k="sent" aria-current="${cur==='sent'}">Emails sent<small>${SENT.length}</small></button>`;
+ const withMail=VENUES.filter(v=>v.email).length,rep=SENT.filter(s=>/repl/i.test(s.status)).length;
+ document.getElementById('stats').innerHTML=`<b>${VENUES.length}</b> venues · <b>${withMail}</b> with email<br><b>${SENT.length}</b> emails sent · <b>${rep}</b> replies<br><span class="live">${esc(live)}</span>`}
+nav.addEventListener('click',e=>{const b=e.target.closest('button');if(b)location.hash=b.dataset.k});
+function setVB(t){tgt=t;const [x0,y0,w0,h0]=vb||t;cancelAnimationFrame(anim);
+ if(!vb||matchMedia('(prefers-reduced-motion: reduce)').matches){vb=t;svg.setAttribute('viewBox',t.join(' '));return}
+ const st=performance.now();const step=n=>{const k=Math.min(1,(n-st)/600),e=1-(1-k)**3;vb=[0,1,2,3].map(i=>[x0,y0,w0,h0][i]+(t[i]-[x0,y0,w0,h0][i])*e);svg.setAttribute('viewBox',vb.join(' '));if(k<1)anim=requestAnimationFrame(step)};anim=requestAnimationFrame(step)}
+function boxOf(L,minW=7,minH=4){if(!L.length)return [-10,35,45,66];let x0=Math.min(...L.map(p=>p[0])),x1=Math.max(...L.map(p=>p[0])),y0=Math.min(...L.map(p=>p[1])),y1=Math.max(...L.map(p=>p[1]));const cx=(x0+x1)/2,cy=(y0+y1)/2,w=Math.max(x1-x0+2.4,minW),h=Math.max(y1-y0+1.6,minH);return [cx-w/2,cy-h/2,cx+w/2,cy+h/2]}
+const rbox=rt=>boxOf(rt.stops.map(s=>CITIES[s].ll));
+const pinned=()=>VENUES.filter(v=>isFinite(v.lat)&&isFinite(v.lng)&&v.lat&&v.lng);
+const cbox=c=>{const L=pinned().filter(v=>v.country===c.name).map(v=>[v.lng,v.lat]);return L.length?boxOf(L):(c.box||[-10,35,45,66])};
+function fit(box){const [a,b]=P([box[0],box[3]]),[c,d]=P([box[2],box[1]]);const W=svg.clientWidth||800,H=svg.clientHeight||600;let w=c-a,h=d-b;const r=W/H;if(w/h<r){const nw=h*r;return [a-(nw-w)/2,b,nw,h]}const nh=w/r;return [a,b-(nh-h)/2,w,nh]}
+const FILL={todo:'var(--panel)',sent:'var(--blue)',replied:'var(--good)',off:'var(--mute)'};
+function draw(){const c=COUNTRIES[cur];const z=tgt[2]/(svg.clientWidth||800);const fs=13*z,r=4*z;
+ const rt=c&&c.routes.length?(c.routes.find(x=>x.id===route)||c.routes[0]):null;
+ const stops=rt?rt.stops.map(s=>P(CITIES[s].ll)):[];
+ let o=land;
+ if(c)o+=c.flights.filter(f=>AIRPORTS[f.to]&&AIRPORTS[f.from]).map(f=>{const [x1,y1]=P(AIRPORTS[f.from].ll),[x2,y2]=P(AIRPORTS[f.to].ll);const mx=(x1+x2)/2,my=Math.min(y1,y2)-Math.abs(x2-x1)*.18;return `<path d="M${x1},${y1}Q${mx},${my} ${x2},${y2}" fill="none" stroke="var(--mute)" stroke-width="${1.4*z}" stroke-dasharray="${5*z} ${4*z}"/>`}).join('');
+ if(rt){o+=`<polyline points="${stops.map(p=>p.join(',')).join(' ')}" fill="none" stroke="var(--red)" stroke-width="${4*z}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  rt.legs.forEach((l,i)=>{if(!l[0])return;const [a,b]=stops[i],[e,f]=stops[i+1];o+=`<text class="lbl k" style="font-size:${fs*.95}px;stroke-width:${3*z}px" x="${(a+e)/2+6*z}" y="${(b+f)/2-6*z}">${l[0]} km</text>`})}
+ const cs=c?new Set([...c.cities,'rustavi']):new Set(['rustavi']);
+ o+=[...cs].map(k=>{const C=CITIES[k],[x,y]=P(C.ll),on=rt&&rt.stops.includes(k);return `<circle cx="${x}" cy="${y}" r="${(on?1.6:1)*r}" fill="${C.home?'var(--ink)':on?'var(--red)':'var(--mute)'}"/><text class="lbl" style="font-size:${fs*(on?1.08:.92)}px;stroke-width:${3*z}px" x="${x+6*z}" y="${y-6*z}">${esc(C.n)}${C.home?' (home)':''}</text>`}).join('');
+ o+=pinned().map(v=>{const [x,y]=P([v.lng,v.lat]),s=(v.id===selV?2.6:1.8)*r;return `<path class="pin" data-v="${esc(v.id)}" d="M${x},${y-s}L${x+s},${y}L${x},${y+s}L${x-s},${y}Z" fill="${v.id===selV?'var(--red)':FILL[vStatus(v)]}" stroke="var(--ink)" stroke-width="${1.2*z}"><title>${esc(v.name)} · ${esc(v.city)}</title></path>`}).join('');
+ if(selV){const v=VENUES.find(x=>x.id===selV);if(v&&v.lat){const [x,y]=P([v.lng,v.lat]);o+=`<text class="lbl" style="font-size:${fs}px;stroke-width:${3*z}px" x="${x+8*z}" y="${y+16*z}">${esc(v.name)}</text>`}}
+ if(c)o+=Object.entries(AIRPORTS).map(([k,A])=>{const [x,y]=P(A.ll);return `<rect x="${x-r}" y="${y-r}" width="${2*r}" height="${2*r}" fill="none" stroke="var(--ink)" stroke-width="${1.2*z}"/><text class="lbl a" style="font-size:${fs*.85}px;stroke-width:${3*z}px" x="${x+6*z}" y="${y+14*z}">${k}</text>`}).join('');
+ svg.innerHTML=o;const sel=new Set(c?[c.geo,...(rt?rt.stops.map(s=>CITIES[s].cc).filter(Boolean):[])]:[]);svg.querySelectorAll('.c').forEach(p=>{if(sel.has(p.dataset.n))p.classList.add('sel');if(p.dataset.n==='Georgia')p.classList.add('home')});
+ document.getElementById('mt').textContent=c?(c.name+(rt?' · '+rt.name:' · all venues')):'All venues · emails sent'}
+svg.addEventListener('click',e=>{const p=e.target.closest('.pin');if(!p)return;const v=VENUES.find(x=>x.id===p.dataset.v);if(!v)return;const k=keyOf(v.country);selV=v.id;if(cur!==k&&cur!=='sent'){location.hash=k}else{render(true)}});
+function weekends(c){const good=[2,3,4,5,9,10,11],fl=Object.fromEntries(c.flags),out={};const d=new Date(Date.UTC(2027,0,1));while(d.getUTCDay()!==5)d.setUTCDate(d.getUTCDate()+1);
+ for(;d.getUTCFullYear()===2027;d.setUTCDate(d.getUTCDate()+7)){const m=d.getUTCMonth()+1;if(!good.includes(m))continue;const iso=d.toISOString().slice(0,10),s=new Date(d);s.setUTCDate(s.getUTCDate()+2);
+  const lab=d.getUTCDate()+'–'+s.getUTCDate()+(s.getUTCMonth()!==d.getUTCMonth()?' '+s.toLocaleString('en',{month:'short',timeZone:'UTC'}):'');(out[m]??=[]).push({lab,flag:fl[iso]})}return out}
+const vn=s=>{const L=vIn(CITIES[s].n);return `<span class="vn">${L.length?L.map(v=>esc(v.name)).join(' · '):'venue still to find'}</span>`};
+const BADGE={todo:'',sent:'<span class="st sent">Email sent</span>',replied:'<span class="st replied">Replied</span>',off:'<span class="st off">Bounced / declined</span>'};
+function vcard(v){const row=(k,val,link)=>{if(!val)return '';if(link){const u=safeUrl(val);return u?`<dt>${k}</dt><dd><a href="${esc(u)}">${esc(val.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,''))}</a></dd>`:''}return `<dt>${k}</dt><dd>${esc(val)}</dd>`};
+ const s=sentFor(v);
+ return `<button class="vcard" data-v="${esc(v.id)}" aria-pressed="${v.id===selV}"><b>${esc(v.name)}</b>${BADGE[vStatus(v)]}<span class="conf">${esc((v.conf||'').split(' ')[0]||'?')} contact</span><div class="m">${esc(v.city)} · ${esc(v.cap||'capacity unknown')}</div><dl>${row('Email',v.email)}${row('Phone',v.phone)}${row('Contact',v.contact)}${s?row('Sent',s.date+(s.summary?' · '+s.summary:'')):''}${row('Played',v.fit)}${row('Address',v.address)}${row('Website',v.web,1)}${row('Social',v.social,1)}${row('Photos',v.photos,1)}</dl></button>`}
+function bindCards(fallbackBox){document.querySelectorAll('.vcard').forEach(b=>b.addEventListener('click',e=>{if(e.target.closest('a'))return;selV=selV===b.dataset.v?null:b.dataset.v;const v=VENUES.find(x=>x.id===selV);document.querySelectorAll('.vcard').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===selV));setVB(fit(v&&v.lat?[v.lng-1.6,v.lat-1,v.lng+1.6,v.lat+1]:fallbackBox()));draw()}))}
+function renderSent(){const panel=document.getElementById('panel');const by={};SENT.forEach(s=>{(by[s.country||'Other']??=[]).push(s)});
+ panel.innerHTML=`<section><h2>Emails sent</h2><p class="lead">${SENT.length} emails from umbriofficial@gmail.com, with a copy to Besik. Blue pins on the map were emailed, green ones replied.</p></section>
+ ${SENT.length?Object.entries(by).map(([cn,L])=>`<section><h3>${esc(cn)} (${L.length})</h3><table class="stack"><thead><tr><td>Venue</td><td>Sent</td><td>Status</td></tr></thead><tbody>${L.map(s=>{const u=safeUrl(s.link);return `<tr><td data-l="Venue"><b>${esc(s.name)}</b><small>${esc(s.city)} · ${esc(s.email)}</small>${s.summary?`<small>${esc(s.summary)}</small>`:''}</td><td data-l="Sent" class="r">${esc(s.date)}${u?`<small><a href="${esc(u)}">Gmail thread</a></small>`:''}</td><td data-l="Status"><span class="st ${/repl/i.test(s.status)?'replied':/bounc|declin/i.test(s.status)?'off':'sent'}">${esc(s.status||'sent')}</span>${s.follow?`<small>follow-up ${esc(s.follow)}</small>`:''}</td></tr>`}).join('')}</tbody></table></section>`).join(''):'<section class="empty">No emails logged yet.</section>'}`;
+ setVB(fit(boxOf(pinned().map(v=>[v.lng,v.lat]))));draw()}
+function render(keepView){renderNav();if(cur==='sent'){renderSent();return}
+ const c=COUNTRIES[cur];const rt=c.routes.length?(c.routes.find(x=>x.id===route)||c.routes[0]):null;route=rt&&rt.id;
+ const W=weekends(c);const vs=VENUES.filter(v=>v.country===c.name);
+ document.getElementById('panel').innerHTML=`
+ <section><h2>${esc(c.name)}</h2><p class="lead">Travel rule: leave at 10:00, arrive at the next venue by 17:00 for soundcheck. Target is 200 km or less per leg.</p></section>
+ ${c.flights.length?`<section><h3>Getting there</h3><table><tbody>${c.flights.map(f=>`<tr><td class="r">${esc(f.from)} → ${esc(f.to)}</td><td>${esc(f.kind)}</td><td class="p">${esc(f.price)}</td></tr>`).join('')}</tbody></table>
+ <p class="src">Prices are one way, per person, without instrument baggage, as seen on fare sites in Nov 2026. They change daily.</p></section>`:''}
+ <section><h3>Route options</h3>${c.routes.length?`<div style="margin-top:10px">${c.routes.map(r=>`<button class="route" data-r="${r.id}" aria-pressed="${r.id===route}"><h3>${esc(r.name)}</h3><span class="t">${esc(r.tag)}</span>
+  <ul class="legs"><li><span class="night">Fri</span><span>${esc(CITIES[r.stops[0]].n)}${vn(r.stops[0])}</span><span></span></li>${r.legs.map((l,i)=>`<li><span class="night">${['Sat','Sun'][i]}</span><span>${l[0]?`→ ${esc(CITIES[r.stops[i+1]].n)} · ${hm(l[1])} drive, arrive ≈${arrive(l[1])}`:`${esc(CITIES[r.stops[i+1]].n)}, second club, no travel`}${vn(r.stops[i+1])}</span><span class="km ${l[0]<=200?'ok':'long'}">${l[0]} km</span></li>`).join('')}</ul>
+  <p>${esc(r.air)}</p><p>${esc(r.note)}</p></button>`).join('')}</div>`:`<div class="empty">Routes and flights for ${esc(c.name)} aren't planned yet. The venues below came in from the research runs. Ask Claude to plan routes here.</div>`}</section>
+ <section><h3>Venues in the database (${vs.length})</h3><p class="src">Live from your Venues tab. Tap a venue to find it on the map. "High/Medium/Low contact" = how sure the email or phone is.</p>${vs.map(vcard).join('')}</section>
+ <section><h3>When: Fri–Sun weekends in club season 2027</h3>
+ <div class="empty">No venue has sent free dates yet. Once they reply, their open dates will show here.</div>
+ <div class="months" style="margin-top:12px">${Object.entries(W).map(([m,ws])=>`<div class="mo"><b>${new Date(Date.UTC(2027,m-1,1)).toLocaleString('en',{month:'long',timeZone:'UTC'})}</b><div class="chips">${ws.map(w=>`<span class="chip${w.flag?' x':''}" title="${esc(w.flag||'')}">${esc(w.lab)}${w.flag?' ⚠':''}</span>`).join('')}</div></div>`).join('')}</div>
+ <p class="src" style="margin-top:10px">Club season is Feb–May and Sep–Nov. ⚠ marks a holiday weekend (hover to see it). Holiday dates are approximate.</p></section>
+ <section class="src">Driving times: Mapbox routing, typical traffic. Flights: Kayak, Skyscanner, Trip.com, Expedia and airBaltic listings, Nov 2026.</section>`;
+ document.querySelectorAll('.route').forEach(b=>b.addEventListener('click',()=>{route=b.dataset.r;selV=null;render()}));
+ const fb=()=>rt?rbox(rt):cbox(c);bindCards(fb);
+ const v=selV&&VENUES.find(x=>x.id===selV);
+ if(!keepView||!tgt)setVB(fit(v&&v.lat?[v.lng-1.6,v.lat-1,v.lng+1.6,v.lat+1]:fb()));else if(v&&v.lat)setVB(fit([v.lng-1.6,v.lat-1,v.lng+1.6,v.lat+1]));
+ draw();if(v){const el=document.querySelector(`.vcard[data-v="${CSS.escape(v.id)}"]`);el&&el.scrollIntoView({block:'center'})}}
+function go(){ensureCountries();const k=location.hash.slice(1);const nk=k==='sent'||COUNTRIES[k]?k:'romania';if(nk!==cur){cur=nk;route=null}render()}
+addEventListener('hashchange',go);
+const ro=new ResizeObserver(()=>{if(cur&&tgt){vb=null;render(false)}});ro.observe(svg);
+go();
+/* live data from the Google Sheet */
+const rowsOf=ev=>{let p=ev&&ev.result&&ev.result.payload;if(p&&p.content&&!p.values)p=p.content;if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){p=null}}return p&&Array.isArray(p.values)?p.values:null};
+const num=x=>{const n=parseFloat(String(x??'').replace(',','.'));return isFinite(n)?n:NaN};
+function toVenues(rows){const H=rows[0].map(h=>String(h).toLowerCase());const ix=n=>H.findIndex(h=>h.startsWith(n));const g=(r,n)=>{const i=ix(n);return i<0?'':String(r[i]??'').replace(/^'/,'')};
+ return rows.slice(1).filter(r=>g(r,'name')).map(r=>({id:g(r,'id'),name:g(r,'name'),country:g(r,'country'),city:g(r,'city'),address:g(r,'address'),lat:num(g(r,'lat')),lng:num(g(r,'lng')),cap:g(r,'capacity'),email:g(r,'booking email'),phone:g(r,'phone'),contact:g(r,'contact person'),web:g(r,'website'),social:g(r,'instagram'),photos:g(r,'photos'),fit:g(r,'metal fit'),conf:g(r,'contact confidence'),status:g(r,'status')}))}
+function toSent(rows){return rows.slice(1).filter(r=>r[2]||r[5]).map(r=>({date:String(r[0]??''),id:String(r[1]??''),name:String(r[2]??''),city:String(r[3]??''),country:String(r[4]??''),email:String(r[5]??''),subject:String(r[6]??''),link:String(r[7]??''),status:String(r[8]??''),follow:String(r[9]??''),reply:String(r[10]??''),summary:String(r[11]??'')}))}
+const stamp=()=>new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+(async()=>{let mcp=null;try{mcp=window.claude&&await window.claude.use('mcp')}catch(e){}
+ if(!mcp){live='Saved copy · live data not available in this view';renderNav();return}
+ live='Connecting to your Google Sheet…';renderNav();
+ const opts={refetchInterval:120000};
+ const onErr=ev=>{if(ev&&ev.type==='error'){live='Live update failed · showing last data';renderNav()}};
+ try{mcp.watchTool('Google Sheets','get_values',{spreadsheetId:SHEET,range:'Venues!A1:S3000'},ev=>{onErr(ev);const rows=ev&&ev.type==='data'&&rowsOf(ev);if(rows&&rows.length>1){VENUES=toVenues(rows);live='Live from Google Sheet · updated '+stamp();ensureCountries();const hk=location.hash.slice(1);if(COUNTRIES[hk]&&cur!==hk){cur=hk;route=null;render()}else{if(cur!=='sent'&&!COUNTRIES[cur])cur='romania';render(true)}}},opts);
+  mcp.watchTool('Google Sheets','get_values',{spreadsheetId:SHEET,range:'Sent!A1:L3000'},ev=>{onErr(ev);const rows=ev&&ev.type==='data'&&rowsOf(ev);if(rows){SENT=toSent(rows);render(true)}},opts)}catch(e){live='Live data not available · showing saved copy';renderNav()}})();
+}
+</script></body></html>
