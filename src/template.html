@@ -63,7 +63,18 @@ td.p{white-space:nowrap;text-align:right;font-weight:600}td.r{white-space:nowrap
 .kmlbl{font:700 12px Barlow,sans-serif;color:#d23a2a;text-shadow:0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
 .apt{border:2px solid #333;background:#fff;border-radius:2px}
 .leaflet-tooltip.clbl{font:600 13px Barlow,sans-serif;background:rgba(255,255,255,.9);border:0;box-shadow:none;padding:1px 5px}
-.leaflet-container{font:14px Barlow,sans-serif}.tiles-dark{filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9)}#map.drag{cursor:grabbing}
+.leaflet-container{font:14px Barlow,sans-serif}
+.pop h3{font:600 20px 'Barlow Condensed',sans-serif;margin:0}.pop .m{color:#666;font-size:13px;margin:2px 0 8px}
+.car{position:relative;margin:0 -2px}.track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:6px;border-radius:8px;scrollbar-width:none}.track::-webkit-scrollbar{display:none}
+.track figure{flex:0 0 100%;margin:0;scroll-snap-align:center}.track img{width:100%;height:190px;object-fit:cover;border-radius:8px;display:block;background:#eee}
+.track figcaption{font-size:11px;color:#777;margin-top:3px;line-height:1.3;overflow-wrap:anywhere}.track figcaption a{color:inherit}
+.car button{position:absolute;top:78px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:18px;cursor:pointer}.car .pv{left:6px}.car .nx{right:6px}
+.cnt{position:absolute;right:8px;top:8px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;padding:1px 8px;border-radius:99px}
+.nophoto{font-size:13px;color:#666;padding:14px;border:1px dashed #ccc;border-radius:8px;text-align:center}
+.pop dl{display:grid;grid-template-columns:4.8em 1fr;gap:2px 8px;margin:8px 0 0;font-size:13px}.pop dt{color:#777}.pop dd{margin:0;overflow-wrap:anywhere}
+.pop .more{display:inline-block;margin-top:8px;font-size:13px}
+.leaflet-popup-content{margin:12px 14px;width:300px!important}
+.tiles-dark{filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9)}#map.drag{cursor:grabbing}
 .zoom{position:absolute;right:14px;bottom:14px;z-index:2;display:flex;flex-direction:column;gap:6px}
 .zoom button{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 22px Barlow,sans-serif;cursor:pointer}
 .zoom button:focus-visible{outline:2px solid var(--red)}
@@ -102,14 +113,35 @@ const LMAP=window.L?(()=>{svg.style.display='none';document.querySelector('.hint
  return {m,g:L.layerGroup().addTo(m)}})():null;
 const ll=a=>[a[1],a[0]];
 function curve(a,b){const [y1,x1]=a,[y2,x2]=b,cx=(x1+x2)/2,cy=Math.max(y1,y2)+Math.abs(x2-x1)*.15,pts=[];for(let i=0;i<=30;i++){const t=i/30;pts.push([(1-t)**2*y1+2*(1-t)*t*cy+t*t*y2,(1-t)**2*x1+2*(1-t)*t*cx+t*t*x2])}return pts}
-function lDraw(){const {g}=LMAP;g.clearLayers();const c=COUNTRIES[cur];const rt=c&&c.routes.length?(c.routes.find(x=>x.id===route)||c.routes[0]):null;
+
+const PH={};const strip=s=>String(s||'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
+async function photos(v){const cat=v.commons||COMMONS[v.id];if(!cat)return [];if(PH[v.id])return PH[v.id];
+ const base='https://commons.wikimedia.org/w/api.php?format=json&origin=*&action=query&prop=imageinfo&iiprop=url|extmetadata|mime&iiurlwidth=640&';
+ const q=async qs=>{try{const r=await fetch(base+qs);const j=await r.json();return Object.values(j.query&&j.query.pages||{})}catch(e){return []}};
+ let pages=await q('generator=search&gsrnamespace=6&gsrlimit=15&gsrsearch='+encodeURIComponent('deepcat:"'+cat+'"'));
+ if(!pages.length)pages=await q('generator=categorymembers&gcmtype=file&gcmlimit=15&gcmtitle='+encodeURIComponent('Category:'+cat));
+ const out=pages.sort((a,b)=>(a.index||0)-(b.index||0)).map(p=>{const i=(p.imageinfo||[])[0]||{},m=i.extmetadata||{};return {src:i.thumburl||'',page:i.descriptionurl||'',mime:i.mime||'',by:strip(m.Artist&&m.Artist.value),lic:strip(m.LicenseShortName&&m.LicenseShortName.value)}}).filter(x=>/^https:\/\/upload\.wikimedia\.org\//.test(x.src)&&/jpe?g|png|webp/.test(x.mime));
+ return PH[v.id]=out}
+function popupEl(v){const el=document.createElement('div');el.className='pop';const st=vStatus(v);const s=sentFor(v);
+ const row=(k,val)=>val?`<dt>${k}</dt><dd>${esc(val)}</dd>`:'';const pl=safeUrl(v.photos)||safeUrl(v.social)||safeUrl(v.web);
+ el.innerHTML=`<h3>${esc(v.name)}</h3><div class="m">${esc(v.city)} · ${esc(v.cap||'capacity unknown')} ${BADGE[st]||''}</div><div class="car"><div class="nophoto">Loading photos…</div></div><dl>${row('Email',v.email)}${row('Phone',v.phone)}${s?row('Sent',s.date):''}${row('Played',v.fit)}</dl>${pl?`<a class="more" href="${esc(pl)}" target="_blank" rel="noopener">More photos & info ↗</a>`:''}`;
+ photos(v).then(L=>{const car=el.querySelector('.car');if(!L.length){car.innerHTML=`<div class="nophoto">No free-licensed photos found yet.${pl?' Use the link below to see the venue.':''}</div>`;return}
+  car.innerHTML=`<div class="track">${L.map((p,i)=>`<figure><img loading="${i?'lazy':'eager'}" src="${esc(p.src)}" alt="${esc(v.name)} photo ${i+1}"><figcaption>${esc(p.by||'Unknown author')}${p.lic?' · '+esc(p.lic):''} · <a href="${esc(safeUrl(p.page))}" target="_blank" rel="noopener">Wikimedia Commons</a></figcaption></figure>`).join('')}</div>${L.length>1?`<button class="pv" aria-label="Previous photo">‹</button><button class="nx" aria-label="Next photo">›</button>`:''}<span class="cnt">1 / ${L.length}</span>`;
+  const tr=car.querySelector('.track'),cnt=car.querySelector('.cnt');const go=d=>tr.scrollBy({left:d*tr.clientWidth,behavior:'smooth'});
+  car.querySelector('.pv')?.addEventListener('click',e=>{e.stopPropagation();go(-1)});car.querySelector('.nx')?.addEventListener('click',e=>{e.stopPropagation();go(1)});
+  tr.addEventListener('scroll',()=>{cnt.textContent=(Math.round(tr.scrollLeft/tr.clientWidth)+1)+' / '+L.length},{passive:true});
+  tr.tabIndex=0;tr.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(1);if(e.key==='ArrowLeft')go(-1)})});
+ L.DomEvent.disableScrollPropagation(el);L.DomEvent.disableClickPropagation(el);return el}
+let openPop=null,markers={};
+function lDraw(){markers={};const {g}=LMAP;g.clearLayers();const c=COUNTRIES[cur];const rt=c&&c.routes.length?(c.routes.find(x=>x.id===route)||c.routes[0]):null;
  if(c)c.flights.filter(f=>AIRPORTS[f.to]&&AIRPORTS[f.from]).forEach(f=>L.polyline(curve(ll(AIRPORTS[f.from].ll),ll(AIRPORTS[f.to].ll)),{color:'#777',weight:1.5,dashArray:'6 6',interactive:false}).addTo(g));
  if(rt){const pts=rt.stops.map(s=>ll(CITIES[s].ll));L.polyline(pts,{color:'#d23a2a',weight:5,opacity:.9}).addTo(g);
   rt.legs.forEach((l,i)=>{if(!l[0])return;const a=pts[i],b=pts[i+1];L.marker([(a[0]+b[0])/2,(a[1]+b[1])/2],{interactive:false,icon:L.divIcon({className:'kmlbl',html:l[0]+' km',iconSize:[60,16],iconAnchor:[-6,8]})}).addTo(g)})}
  const cs=c?new Set([...c.cities,'rustavi']):new Set(['rustavi']);
  cs.forEach(k=>{const C=CITIES[k],on=rt&&rt.stops.includes(k);L.circleMarker(ll(C.ll),{radius:on?7:4,color:'#fff',weight:2,fillColor:C.home?'#222':on?'#d23a2a':'#888',fillOpacity:1}).bindTooltip(C.n+(C.home?' (home)':''),{permanent:!!(on||C.home),direction:'right',className:'clbl',offset:[8,0]}).addTo(g)});
  if(c)Object.entries(AIRPORTS).forEach(([k,A])=>L.marker(ll(A.ll),{icon:L.divIcon({className:'apt',iconSize:[10,10]})}).bindTooltip(k+' · '+A.n+' airport').addTo(g));
- pinned().forEach(v=>{const st=vStatus(v),sel=v.id===selV;L.marker([v.lat,v.lng],{zIndexOffset:sel?1000:100,icon:L.divIcon({className:'vpin '+st+(sel?' sel':''),html:'<i></i>',iconSize:sel?[18,18]:[14,14]})}).bindTooltip(`${esc(v.name)} · ${esc(v.city)}`,{permanent:sel,direction:'top',offset:[0,-8]}).on('click',()=>{const k=keyOf(v.country);selV=v.id;if(cur!==k&&cur!=='sent'){location.hash=k}else{render(true);LMAP.m.flyTo([v.lat,v.lng],Math.max(LMAP.m.getZoom(),13),{duration:.6})}}).addTo(g)});
+ pinned().forEach(v=>{const st=vStatus(v),sel=v.id===selV;const mk=L.marker([v.lat,v.lng],{zIndexOffset:sel?1000:100,icon:L.divIcon({className:'vpin '+st+(sel?' sel':''),html:'<i></i>',iconSize:sel?[18,18]:[14,14]})}).bindTooltip(`${esc(v.name)} · ${esc(v.city)}`,{direction:'top',offset:[0,-8]}).bindPopup(()=>popupEl(v),{maxWidth:330,minWidth:300,autoPanPadding:[30,30]}).on('click',()=>{const k=keyOf(v.country);selV=v.id;if(cur!==k&&cur!=='sent'){openPop=v.id;location.hash=k}else{document.querySelectorAll('.vcard').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===selV));const el=document.querySelector(`.vcard[data-v="${CSS.escape(v.id)}"]`);el&&el.scrollIntoView({block:'center',behavior:'smooth'})}});mk.addTo(g);markers[v.id]=mk});
+ if(openPop&&markers[openPop]){const id=openPop;openPop=null;setTimeout(()=>markers[id]&&markers[id].openPopup(),700)}
  document.getElementById('mt').textContent=c?(c.name+(rt?' · '+rt.name:' · all venues')):'All venues · emails sent'}
 const land=GEO.map(c=>`<path class="c" data-n="${esc(c.n)}" d="${c.p.map(r=>'M'+r.map(p=>P(p).map(v=>v.toFixed(1)).join(',')).join('L')+'Z').join('')}"/>`).join('');
 const nav=document.getElementById('nav');
