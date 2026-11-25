@@ -25,8 +25,8 @@ aside.nav{border-right:1px solid var(--line);padding:22px 16px;overflow-y:auto;d
 .legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:8px;background:var(--red)}
 .legend i.f{background:none;border-top:2px dashed var(--mute);height:0}
 .mapwrap{position:relative;background:var(--sea)}
-.mapwrap svg{position:absolute;inset:0;width:100%;height:100%}
-.maptitle{position:absolute;z-index:2;background:var(--panel);padding:4px 10px;border-radius:6px;left:18px;top:14px;font:600 15px Barlow;color:var(--mute);pointer-events:none}
+#map{position:absolute;inset:0;width:100%;height:100%}
+.maptitle{position:absolute;left:60px!important;z-index:2;background:var(--panel);padding:4px 10px;border-radius:6px;left:18px;top:14px;font:600 15px Barlow;color:var(--mute);pointer-events:none}
 .c{fill:var(--land);stroke:var(--bg);stroke-width:.6;vector-effect:non-scaling-stroke}.c.sel{fill:var(--land2)}.c.home{fill:light-dark(#e9d3cd,#3a2724)}
 .lbl{font:600 13px Barlow;fill:var(--ink);paint-order:stroke;stroke:var(--sea);stroke-width:3px;stroke-linejoin:round}
 .lbl.k{font:600 12px Barlow;fill:var(--red)}.lbl.a{fill:var(--mute);font-weight:500}
@@ -56,7 +56,14 @@ td.p{white-space:nowrap;text-align:right;font-weight:600}td.r{white-space:nowrap
 .st{font-size:12px;padding:2px 8px;border-radius:99px;margin-left:6px;white-space:nowrap;color:#fff}.st.sent{background:var(--blue)}.st.replied{background:var(--good)}.st.off{background:var(--mute)}
 .stats{font-size:14px;line-height:1.6;margin:14px 0 6px;padding:10px 12px;border-radius:8px;background:var(--land)}.live{font-size:12px;color:var(--mute)}
 .pin{cursor:pointer}
-.mapwrap svg{cursor:grab;touch-action:none}.mapwrap svg.drag{cursor:grabbing}
+#map{cursor:grab;touch-action:none}
+#lmap{position:absolute;inset:0;display:none;background:var(--sea)}#lmap.on{display:block}
+.vpin{background:none;border:0}.vpin i{display:block;width:100%;height:100%;background:#fff;border:2px solid #222;transform:rotate(45deg);border-radius:2px;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.vpin.sent i{background:#3b74c4}.vpin.replied i{background:#2f9a55}.vpin.off i{background:#999}.vpin.sel i{background:#d23a2a;border-color:#fff}
+.kmlbl{font:700 12px Barlow,sans-serif;color:#d23a2a;text-shadow:0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
+.apt{border:2px solid #333;background:#fff;border-radius:2px}
+.leaflet-tooltip.clbl{font:600 13px Barlow,sans-serif;background:rgba(255,255,255,.9);border:0;box-shadow:none;padding:1px 5px}
+.leaflet-container{font:14px Barlow,sans-serif}#map.drag{cursor:grabbing}
 .zoom{position:absolute;right:14px;bottom:14px;z-index:2;display:flex;flex-direction:column;gap:6px}
 .zoom button{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 22px Barlow,sans-serif;cursor:pointer}
 .zoom button:focus-visible{outline:2px solid var(--red)}
@@ -69,7 +76,7 @@ td.p{white-space:nowrap;text-align:right;font-weight:600}td.r{white-space:nowrap
 <div class="app">
 <aside class="nav"><div class="brand"><h1>UMBRI tour</h1><p class="sub">2027 · 3 nights in one region</p></div><div class="stats" id="stats"></div><div id="nav" style="display:contents"></div>
 <div class="legend"><span><i></i>Tour route (by road)</span><span><i class="f"></i>Flight from Georgia</span><span>◇ Venue · <span style="color:var(--blue)">◆</span> emailed · <span style="color:var(--good)">◆</span> replied</span><span>Leg colour: green ≤ 200 km, amber over 200 km</span></div></aside>
-<main class="mapwrap"><div class="maptitle" id="mt"></div><svg id="map" role="img" aria-label="Map of the selected tour region"></svg><div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Show the whole route">⟲</button></div><div class="hint">Scroll or pinch to zoom · drag to move</div></main>
+<main class="mapwrap"><div class="maptitle" id="mt"></div><div id="lmap"></div><svg id="map" role="img" aria-label="Map of the selected tour region"></svg><div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Show the whole route">⟲</button></div><div class="hint">Scroll or pinch to zoom · drag to move</div></main>
 <div class="panel" id="panel"></div>
 </div>
 <script>
@@ -86,6 +93,23 @@ const arrive=s=>{const m=600+Math.round(s/60)+(s>7200?30:0);return String(Math.f
 const slug=n=>String(n).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z]+/g,'');
 let cur=null,route=null,vb=null,anim=null,tgt=null,selV=null,SENT=SENT0.slice(),live='Saved copy (connect to see live data)';
 const GEONAME={'Türkiye':'Turkey','Czech Republic':'Czechia','United Kingdom':'United Kingdom','Bosnia and Herzegovina':'Bosnia and Herz.','North Macedonia':'Macedonia'};
+
+const LMAP=window.L?(()=>{svg.style.display='none';document.querySelector('.hint').style.display='none';document.getElementById('zin').style.display='none';document.getElementById('zout').style.display='none';
+ const el=document.getElementById('lmap');el.classList.add('on');const m=L.map(el,{zoomSnap:.5,worldCopyJump:false,minZoom:3,maxZoom:18}).setView([48,20],4);
+ const dark=matchMedia('(prefers-color-scheme: dark)').matches;
+ L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark?'dark_all':'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`,{subdomains:'abcd',maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(m);
+ return {m,g:L.layerGroup().addTo(m)}})():null;
+const ll=a=>[a[1],a[0]];
+function curve(a,b){const [y1,x1]=a,[y2,x2]=b,cx=(x1+x2)/2,cy=Math.max(y1,y2)+Math.abs(x2-x1)*.15,pts=[];for(let i=0;i<=30;i++){const t=i/30;pts.push([(1-t)**2*y1+2*(1-t)*t*cy+t*t*y2,(1-t)**2*x1+2*(1-t)*t*cx+t*t*x2])}return pts}
+function lDraw(){const {g}=LMAP;g.clearLayers();const c=COUNTRIES[cur];const rt=c&&c.routes.length?(c.routes.find(x=>x.id===route)||c.routes[0]):null;
+ if(c)c.flights.filter(f=>AIRPORTS[f.to]&&AIRPORTS[f.from]).forEach(f=>L.polyline(curve(ll(AIRPORTS[f.from].ll),ll(AIRPORTS[f.to].ll)),{color:'#777',weight:1.5,dashArray:'6 6',interactive:false}).addTo(g));
+ if(rt){const pts=rt.stops.map(s=>ll(CITIES[s].ll));L.polyline(pts,{color:'#d23a2a',weight:5,opacity:.9}).addTo(g);
+  rt.legs.forEach((l,i)=>{if(!l[0])return;const a=pts[i],b=pts[i+1];L.marker([(a[0]+b[0])/2,(a[1]+b[1])/2],{interactive:false,icon:L.divIcon({className:'kmlbl',html:l[0]+' km',iconSize:[60,16],iconAnchor:[-6,8]})}).addTo(g)})}
+ const cs=c?new Set([...c.cities,'rustavi']):new Set(['rustavi']);
+ cs.forEach(k=>{const C=CITIES[k],on=rt&&rt.stops.includes(k);L.circleMarker(ll(C.ll),{radius:on?7:4,color:'#fff',weight:2,fillColor:C.home?'#222':on?'#d23a2a':'#888',fillOpacity:1}).bindTooltip(C.n+(C.home?' (home)':''),{permanent:!!(on||C.home),direction:'right',className:'clbl',offset:[8,0]}).addTo(g)});
+ if(c)Object.entries(AIRPORTS).forEach(([k,A])=>L.marker(ll(A.ll),{icon:L.divIcon({className:'apt',iconSize:[10,10]})}).bindTooltip(k+' · '+A.n+' airport').addTo(g));
+ pinned().forEach(v=>{const st=vStatus(v),sel=v.id===selV;L.marker([v.lat,v.lng],{zIndexOffset:sel?1000:100,icon:L.divIcon({className:'vpin '+st+(sel?' sel':''),html:'<i></i>',iconSize:sel?[18,18]:[14,14]})}).bindTooltip(`${esc(v.name)} · ${esc(v.city)}`,{permanent:sel,direction:'top',offset:[0,-8]}).on('click',()=>{const k=keyOf(v.country);selV=v.id;if(cur!==k&&cur!=='sent'){location.hash=k}else{render(true);LMAP.m.flyTo([v.lat,v.lng],Math.max(LMAP.m.getZoom(),13),{duration:.6})}}).addTo(g)});
+ document.getElementById('mt').textContent=c?(c.name+(rt?' · '+rt.name:' · all venues')):'All venues · emails sent'}
 const land=GEO.map(c=>`<path class="c" data-n="${esc(c.n)}" d="${c.p.map(r=>'M'+r.map(p=>P(p).map(v=>v.toFixed(1)).join(',')).join('L')+'Z').join('')}"/>`).join('');
 const nav=document.getElementById('nav');
 const keyOf=name=>{for(const [k,c] of Object.entries(COUNTRIES))if(c.name===name)return k;return slug(name)};
@@ -98,16 +122,16 @@ function renderNav(){const ks=Object.keys(COUNTRIES).sort((a,b)=>(COUNTRIES[a].d
  const withMail=VENUES.filter(v=>v.email).length,rep=SENT.filter(s=>/repl/i.test(s.status)).length;
  document.getElementById('stats').innerHTML=`<b>${VENUES.length}</b> venues · <b>${withMail}</b> with email<br><b>${SENT.length}</b> emails sent · <b>${rep}</b> replies<br><span class="live">${esc(live)}</span>`}
 nav.addEventListener('click',e=>{const b=e.target.closest('button');if(b)location.hash=b.dataset.k});
-function setVB(t){tgt=t;const [x0,y0,w0,h0]=vb||t;cancelAnimationFrame(anim);
+function setVB(t){if(LMAP){tgt=t;LMAP.m.flyToBounds([[t[1],t[0]],[t[3],t[2]]],{padding:[30,30],duration:.6});return}tgt=t;const [x0,y0,w0,h0]=vb||t;cancelAnimationFrame(anim);
  if(!vb||matchMedia('(prefers-reduced-motion: reduce)').matches){vb=t;svg.setAttribute('viewBox',t.join(' '));return}
  const st=performance.now();const step=n=>{const k=Math.min(1,(n-st)/600),e=1-(1-k)**3;vb=[0,1,2,3].map(i=>[x0,y0,w0,h0][i]+(t[i]-[x0,y0,w0,h0][i])*e);svg.setAttribute('viewBox',vb.join(' '));if(k<1)anim=requestAnimationFrame(step)};anim=requestAnimationFrame(step)}
 function boxOf(L,minW=7,minH=4){if(!L.length)return [-10,35,45,66];let x0=Math.min(...L.map(p=>p[0])),x1=Math.max(...L.map(p=>p[0])),y0=Math.min(...L.map(p=>p[1])),y1=Math.max(...L.map(p=>p[1]));const cx=(x0+x1)/2,cy=(y0+y1)/2,w=Math.max(x1-x0+2.4,minW),h=Math.max(y1-y0+1.6,minH);return [cx-w/2,cy-h/2,cx+w/2,cy+h/2]}
 const rbox=rt=>boxOf(rt.stops.map(s=>CITIES[s].ll));
 const pinned=()=>VENUES.filter(v=>isFinite(v.lat)&&isFinite(v.lng)&&v.lat&&v.lng);
 const cbox=c=>{const L=pinned().filter(v=>v.country===c.name).map(v=>[v.lng,v.lat]);return L.length?boxOf(L):(c.box||[-10,35,45,66])};
-function fit(box){const [a,b]=P([box[0],box[3]]),[c,d]=P([box[2],box[1]]);const W=svg.clientWidth||800,H=svg.clientHeight||600;let w=c-a,h=d-b;const r=W/H;if(w/h<r){const nw=h*r;return [a-(nw-w)/2,b,nw,h]}const nh=w/r;return [a,b-(nh-h)/2,w,nh]}
+function fit(box){if(LMAP)return box;const [a,b]=P([box[0],box[3]]),[c,d]=P([box[2],box[1]]);const W=svg.clientWidth||800,H=svg.clientHeight||600;let w=c-a,h=d-b;const r=W/H;if(w/h<r){const nw=h*r;return [a-(nw-w)/2,b,nw,h]}const nh=w/r;return [a,b-(nh-h)/2,w,nh]}
 const FILL={todo:'var(--panel)',sent:'var(--blue)',replied:'var(--good)',off:'var(--mute)'};
-function draw(){const c=COUNTRIES[cur];const z=tgt[2]/(svg.clientWidth||800);const fs=13*z,r=4*z;
+function draw(){if(LMAP)return lDraw();const c=COUNTRIES[cur];const z=tgt[2]/(svg.clientWidth||800);const fs=13*z,r=4*z;
  const rt=c&&c.routes.length?(c.routes.find(x=>x.id===route)||c.routes[0]):null;
  const stops=rt?rt.stops.map(s=>P(CITIES[s].ll)):[];
  let o=land;
@@ -131,7 +155,7 @@ const BADGE={todo:'',sent:'<span class="st sent">Email sent</span>',replied:'<sp
 function vcard(v){const row=(k,val,link)=>{if(!val)return '';if(link){const u=safeUrl(val);return u?`<dt>${k}</dt><dd><a href="${esc(u)}">${esc(val.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,''))}</a></dd>`:''}return `<dt>${k}</dt><dd>${esc(val)}</dd>`};
  const s=sentFor(v);
  return `<button class="vcard" data-v="${esc(v.id)}" aria-pressed="${v.id===selV}"><b>${esc(v.name)}</b>${BADGE[vStatus(v)]}<span class="conf">${esc((v.conf||'').split(' ')[0]||'?')} contact</span><div class="m">${esc(v.city)} · ${esc(v.cap||'capacity unknown')}</div><dl>${row('Email',v.email)}${row('Phone',v.phone)}${row('Contact',v.contact)}${s?row('Sent',s.date+(s.summary?' · '+s.summary:'')):''}${row('Played',v.fit)}${row('Address',v.address)}${row('Website',v.web,1)}${row('Social',v.social,1)}${row('Photos',v.photos,1)}</dl></button>`}
-function bindCards(fallbackBox){document.querySelectorAll('.vcard').forEach(b=>b.addEventListener('click',e=>{if(e.target.closest('a'))return;selV=selV===b.dataset.v?null:b.dataset.v;const v=VENUES.find(x=>x.id===selV);document.querySelectorAll('.vcard').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===selV));setVB(fit(v&&v.lat?[v.lng-1.6,v.lat-1,v.lng+1.6,v.lat+1]:fallbackBox()));draw()}))}
+function bindCards(fallbackBox){document.querySelectorAll('.vcard').forEach(b=>b.addEventListener('click',e=>{if(e.target.closest('a'))return;selV=selV===b.dataset.v?null:b.dataset.v;const v=VENUES.find(x=>x.id===selV);document.querySelectorAll('.vcard').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===selV));if(LMAP&&v&&v.lat){LMAP.m.flyTo([v.lat,v.lng],14,{duration:.7})}else setVB(fit(v&&v.lat?[v.lng-1.6,v.lat-1,v.lng+1.6,v.lat+1]:fallbackBox()));draw()}))}
 function renderSent(){const panel=document.getElementById('panel');const by={};SENT.forEach(s=>{(by[s.country||'Other']??=[]).push(s)});
  panel.innerHTML=`<section><h2>Emails sent</h2><p class="lead">${SENT.length} emails from umbriofficial@gmail.com, with a copy to Besik. Blue pins on the map were emailed, green ones replied.</p></section>
  ${SENT.length?Object.entries(by).map(([cn,L])=>`<section><h3>${esc(cn)} (${L.length})</h3><table class="stack"><thead><tr><td>Venue</td><td>Sent</td><td>Status</td></tr></thead><tbody>${L.map(s=>{const u=safeUrl(s.link);return `<tr><td data-l="Venue"><b>${esc(s.name)}</b><small>${esc(s.city)} · ${esc(s.email)}</small>${s.summary?`<small>${esc(s.summary)}</small>`:''}</td><td data-l="Sent" class="r">${esc(s.date)}${u?`<small><a href="${esc(u)}">Gmail thread</a></small>`:''}</td><td data-l="Status"><span class="st ${/repl/i.test(s.status)?'replied':/bounc|declin/i.test(s.status)?'off':'sent'}">${esc(s.status||'sent')}</span>${s.follow?`<small>follow-up ${esc(s.follow)}</small>`:''}</td></tr>`}).join('')}</tbody></table></section>`).join(''):'<section class="empty">No emails logged yet.</section>'}`;
@@ -173,7 +197,7 @@ svg.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set
 const up=e=>{ptrs.delete(e.pointerId);svg.classList.remove('drag');if(moved)settle();start={vb:vb.slice(),pts:new Map(ptrs)};setTimeout(()=>{if(!ptrs.size)moved=false},0)};
 svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
 document.getElementById('zin').onclick=()=>zoomAt(0.6);document.getElementById('zout').onclick=()=>zoomAt(1.6);
-document.getElementById('zfit').onclick=()=>{selV=null;vb=vb;render()};
+document.getElementById('zfit').onclick=()=>{selV=null;render()};
 addEventListener('hashchange',go);
 let lastW=0;const ro=new ResizeObserver(()=>{const w=svg.clientWidth;if(cur&&tgt&&Math.abs(w-lastW)>40){lastW=w;vb=null;render(false)}});ro.observe(svg);
 go();
