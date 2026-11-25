@@ -63,7 +63,7 @@ td.p{white-space:nowrap;text-align:right;font-weight:600}td.r{white-space:nowrap
 .kmlbl{font:700 12px Barlow,sans-serif;color:#d23a2a;text-shadow:0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
 .apt{border:2px solid #333;background:#fff;border-radius:2px}
 .leaflet-tooltip.clbl{font:600 13px Barlow,sans-serif;background:rgba(255,255,255,.9);border:0;box-shadow:none;padding:1px 5px}
-.leaflet-container{font:14px Barlow,sans-serif}#map.drag{cursor:grabbing}
+.leaflet-container{font:14px Barlow,sans-serif}.tiles-dark{filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9)}#map.drag{cursor:grabbing}
 .zoom{position:absolute;right:14px;bottom:14px;z-index:2;display:flex;flex-direction:column;gap:6px}
 .zoom button{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 22px Barlow,sans-serif;cursor:pointer}
 .zoom button:focus-visible{outline:2px solid var(--red)}
@@ -97,7 +97,8 @@ const GEONAME={'Türkiye':'Turkey','Czech Republic':'Czechia','United Kingdom':'
 const LMAP=window.L?(()=>{svg.style.display='none';document.querySelector('.hint').style.display='none';document.getElementById('zin').style.display='none';document.getElementById('zout').style.display='none';
  const el=document.getElementById('lmap');el.classList.add('on');const m=L.map(el,{zoomSnap:.5,worldCopyJump:false,minZoom:3,maxZoom:18}).setView([48,20],4);
  const dark=matchMedia('(prefers-color-scheme: dark)').matches;
- L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark?'dark_all':'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`,{subdomains:'abcd',maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(m);
+ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,className:dark?'tiles-dark':'',attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(m);
+ setTimeout(()=>m.invalidateSize(),300);
  return {m,g:L.layerGroup().addTo(m)}})():null;
 const ll=a=>[a[1],a[0]];
 function curve(a,b){const [y1,x1]=a,[y2,x2]=b,cx=(x1+x2)/2,cy=Math.max(y1,y2)+Math.abs(x2-x1)*.15,pts=[];for(let i=0;i<=30;i++){const t=i/30;pts.push([(1-t)**2*y1+2*(1-t)*t*cy+t*t*y2,(1-t)**2*x1+2*(1-t)*t*cx+t*t*x2])}return pts}
