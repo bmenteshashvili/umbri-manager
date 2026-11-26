@@ -53,13 +53,13 @@ td.p{white-space:nowrap;text-align:right;font-weight:600}td.r{white-space:nowrap
 .vcard b{font:600 18px 'Barlow Condensed',sans-serif}.vcard .m{color:var(--mute)}.vcard dl{display:grid;grid-template-columns:5.5em 1fr;gap:2px 8px;margin:8px 0 0}.vcard dt{color:var(--mute)}.vcard dd{margin:0;overflow-wrap:anywhere}
 .vcard a{color:inherit}.conf{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--land);white-space:nowrap;margin-left:6px}
 .vn{display:block;font-size:13px;color:var(--mute)}
-.st{font-size:12px;padding:2px 8px;border-radius:99px;margin-left:6px;white-space:nowrap;color:#fff}.st.sent{background:var(--blue)}.st.replied{background:var(--good)}.st.off{background:var(--mute)}
+.st{font-size:12px;padding:2px 8px;border-radius:99px;margin-left:6px;white-space:nowrap;color:#fff}.st.sent{background:var(--blue)}.st.replied{background:#c58a10}.st.positive{background:#22b14c}.st.off{background:var(--mute)}
 .stats{font-size:14px;line-height:1.6;margin:14px 0 6px;padding:10px 12px;border-radius:8px;background:var(--land)}.live{font-size:12px;color:var(--mute)}
 .pin{cursor:pointer}
 #map{cursor:grab;touch-action:none}
 #lmap{position:absolute;inset:0;display:none;background:var(--sea)}#lmap.on{display:block}
 .vpin{background:none;border:0}.vpin i{display:block;width:100%;height:100%;background:#fff;border:2px solid #222;transform:rotate(45deg);border-radius:2px;box-shadow:0 1px 4px rgba(0,0,0,.4)}
-.vpin.sent i{background:#3b74c4}.vpin.replied i{background:#2f9a55}.vpin.off i{background:#999}.vpin.sel i{background:#d23a2a;border-color:#fff}
+.vpin.sent i{background:#3b74c4}.vpin.replied i{background:#e0a21b}.vpin.positive i{background:#22b14c;border-color:#fff;border-radius:50%;transform:none;box-shadow:0 0 0 3px rgba(34,177,76,.35),0 1px 4px rgba(0,0,0,.4)}.vpin.off i{background:#999}.vpin.sel i{background:#d23a2a;border-color:#fff}
 .kmlbl{font:700 12px Barlow,sans-serif;color:#d23a2a;text-shadow:0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
 .apt{border:2px solid #333;background:#fff;border-radius:2px}
 .leaflet-tooltip.clbl{font:600 13px Barlow,sans-serif;background:rgba(255,255,255,.9);border:0;box-shadow:none;padding:1px 5px}
@@ -87,7 +87,7 @@ td.p{white-space:nowrap;text-align:right;font-weight:600}td.r{white-space:nowrap
 </style></head><body>
 <div class="app">
 <aside class="nav"><div class="brand"><h1>UMBRI tour</h1><p class="sub">2027 · 3 nights in one region</p></div><div class="stats" id="stats"></div><div id="nav" style="display:contents"></div>
-<div class="legend"><span><i></i>Tour route (by road)</span><span><i class="f"></i>Flight from Georgia</span><span>◇ Venue · <span style="color:var(--blue)">◆</span> emailed · <span style="color:var(--good)">◆</span> replied</span><span>Leg colour: green ≤ 200 km, amber over 200 km</span></div></aside>
+<div class="legend"><span><i></i>Tour route (by road)</span><span><i class="f"></i>Flight from Georgia</span><span>◇ Venue · <span style="color:var(--blue)">◆</span> emailed · <span style="color:#e0a21b">◆</span> replied · <span style="color:#22b14c">●</span> positive</span><span>Leg colour: green ≤ 200 km, amber over 200 km</span></div></aside>
 <main class="mapwrap"><div class="maptitle" id="mt"></div><div id="lmap"></div><svg id="map" role="img" aria-label="Map of the selected tour region"></svg><div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Show the whole route">⟲</button></div><div class="hint">Scroll or pinch to zoom · drag to move</div></main>
 <div class="panel" id="panel"></div>
 </div>
@@ -95,7 +95,7 @@ td.p{white-space:nowrap;text-align:right;font-weight:600}td.r{white-space:nowrap
 const GEO=__GEO__;
 __DATA__
 {
-const SHEET='182Hj8IScJ6VgfnCQl76GRxLvB0Q66_3zAz_uOz6TxB4';
+const BUILT='__BUILT__';const SHEET='182Hj8IScJ6VgfnCQl76GRxLvB0Q66_3zAz_uOz6TxB4';
 const R=Math.PI/180,P=([lo,la])=>[lo*10,-Math.log(Math.tan(Math.PI/4+la*R/2))/R*10];
 const svg=document.getElementById('map');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -129,7 +129,7 @@ function igWire(car,n){const tr=car.querySelector('.track'),cnt=car.querySelecto
  tr.addEventListener('scroll',()=>{cnt.textContent=(Math.round(tr.scrollLeft/tr.clientWidth)+1)+' / '+n+" · from the venue's Instagram"},{passive:true})}
 function popupEl(v){const el=document.createElement('div');el.className='pop';const st=vStatus(v);const s=sentFor(v);
  const row=(k,val)=>val?`<dt>${k}</dt><dd>${esc(val)}</dd>`:'';const pl=safeUrl(v.photos)||safeUrl(v.social)||safeUrl(v.web);
- el.innerHTML=`<h3>${esc(v.name)}</h3><div class="m">${esc(v.city)} · ${esc(v.cap||'capacity unknown')} ${BADGE[st]||''}</div><div class="car"><div class="nophoto">Loading photos…</div></div><dl>${row('Email',v.email)}${row('Phone',v.phone)}${s?row('Sent',s.date):''}${row('Played',v.fit)}</dl>${pl?`<a class="more" href="${esc(pl)}" target="_blank" rel="noopener">More photos & info ↗</a>`:''}`;
+ el.innerHTML=`<h3>${esc(v.name)}</h3><div class="m">${esc(v.city)} · ${esc(v.cap||'capacity unknown')} ${BADGE[st]||''}</div><div class="car"><div class="nophoto">Loading photos…</div></div><dl>${row('Email',v.email)}${row('Phone',v.phone)}${s?row('Sent',s.date):''}${s&&s.summary?row('Reply',s.summary):''}${row('Played',v.fit)}</dl>${pl?`<a class="more" href="${esc(pl)}" target="_blank" rel="noopener">More photos & info ↗</a>`:''}`;
  const IG=igPosts(v);if(IG.length){const car=el.querySelector('.car');car.innerHTML=`<div class="track">${IG.map(c=>`<figure class="ig"><iframe src="https://www.instagram.com/p/${c}/embed" loading="lazy" title="${esc(v.name)} on Instagram" allowtransparency="true" scrolling="no"></iframe></figure>`).join('')}</div>${IG.length>1?'<button class="pv" aria-label="Previous">‹</button><button class="nx" aria-label="Next">›</button>':''}<div class="cnt">1 / ${IG.length} · from the venue's Instagram</div>`;igWire(car,IG.length)}else photos(v).then(L=>{const car=el.querySelector('.car');if(!L.length){car.innerHTML=`<div class="nophoto">No free-licensed photos found yet.${pl?' Use the link below to see the venue.':''}</div>`;return}
   car.innerHTML=`<div class="track">${L.map((p,i)=>`<figure><img loading="${i?'lazy':'eager'}" src="${esc(p.src)}" alt="${esc(v.name)} photo ${i+1}"><figcaption>${esc(p.by||'Unknown author')}${p.lic?' · '+esc(p.lic):''} · <a href="${esc(safeUrl(p.page))}" target="_blank" rel="noopener">Wikimedia Commons</a></figcaption></figure>`).join('')}</div>${L.length>1?`<button class="pv" aria-label="Previous photo">‹</button><button class="nx" aria-label="Next photo">›</button>`:''}<span class="cnt">1 / ${L.length}</span>`;
   const tr=car.querySelector('.track'),cnt=car.querySelector('.cnt');const go=d=>tr.scrollBy({left:d*tr.clientWidth,behavior:'smooth'});
@@ -152,8 +152,9 @@ const land=GEO.map(c=>`<path class="c" data-n="${esc(c.n)}" d="${c.p.map(r=>'M'+
 const nav=document.getElementById('nav');
 const keyOf=name=>{for(const [k,c] of Object.entries(COUNTRIES))if(c.name===name)return k;return slug(name)};
 function ensureCountries(){for(const v of VENUES){if(!v.country)continue;const k=keyOf(v.country);if(!COUNTRIES[k])COUNTRIES[k]={name:v.country,geo:GEONAME[v.country]||v.country,box:null,cities:[],flights:[],routes:[],flags:[],dyn:1}}}
-const sentFor=v=>SENT.find(s=>(s.id&&s.id===v.id)||(s.email&&v.email&&s.email.toLowerCase()===v.email.toLowerCase()));
-const vStatus=v=>{const s=sentFor(v);if(!s)return 'todo';const t=(s.status||'').toLowerCase();return t.includes('repl')?'replied':t.includes('bounc')||t.includes('declin')?'off':'sent'};
+const sentAll=v=>SENT.filter(s=>(s.id&&s.id===v.id)||(s.email&&v.email&&s.email.toLowerCase()===v.email.toLowerCase()));
+const sentFor=v=>{const L=sentAll(v);return L.find(s=>/positive/i.test(s.status))||L.find(s=>/repl/i.test(s.status))||L[L.length-1]};
+const vStatus=v=>{const L=sentAll(v),vs=(v.status||'').toLowerCase(),T=L.map(s=>(s.status||'').toLowerCase());if(vs.includes('positive')||T.some(t=>t.includes('positive')))return 'positive';if(T.some(t=>t.includes('repl')))return 'replied';if(T.some(t=>t==='sent'||t.includes('auto')||t.includes('follow')))return 'sent';return (L.length||vs.includes('bounc')||vs.includes('declin'))?'off':'todo'};
 const vIn=city=>VENUES.filter(v=>v.city===city);
 function renderNav(){const ks=Object.keys(COUNTRIES).sort((a,b)=>(COUNTRIES[a].dyn||0)-(COUNTRIES[b].dyn||0)||COUNTRIES[a].name.localeCompare(COUNTRIES[b].name));
  nav.innerHTML=ks.map(k=>{const c=COUNTRIES[k];return `<button data-k="${esc(k)}" aria-current="${k===cur}">${esc(c.name)}<small>${VENUES.filter(v=>v.country===c.name).length} venues</small></button>`}).join('')+`<button data-k="sent" aria-current="${cur==='sent'}">Emails sent<small>${SENT.length}</small></button>`;
@@ -168,7 +169,7 @@ const rbox=rt=>boxOf(rt.stops.map(s=>CITIES[s].ll));
 const pinned=()=>VENUES.filter(v=>isFinite(v.lat)&&isFinite(v.lng)&&v.lat&&v.lng);
 const cbox=c=>{const L=pinned().filter(v=>v.country===c.name).map(v=>[v.lng,v.lat]);return L.length?boxOf(L):(c.box||[-10,35,45,66])};
 function fit(box){if(LMAP)return box;const [a,b]=P([box[0],box[3]]),[c,d]=P([box[2],box[1]]);const W=svg.clientWidth||800,H=svg.clientHeight||600;let w=c-a,h=d-b;const r=W/H;if(w/h<r){const nw=h*r;return [a-(nw-w)/2,b,nw,h]}const nh=w/r;return [a,b-(nh-h)/2,w,nh]}
-const FILL={todo:'var(--panel)',sent:'var(--blue)',replied:'var(--good)',off:'var(--mute)'};
+const FILL={todo:'var(--panel)',sent:'var(--blue)',replied:'#e0a21b',positive:'#22b14c',off:'var(--mute)'};
 function draw(){if(LMAP)return lDraw();const c=COUNTRIES[cur];const z=tgt[2]/(svg.clientWidth||800);const fs=13*z,r=4*z;
  const rt=c&&c.routes.length?(c.routes.find(x=>x.id===route)||c.routes[0]):null;
  const stops=rt?rt.stops.map(s=>P(CITIES[s].ll)):[];
@@ -189,7 +190,7 @@ function weekends(c){const good=[2,3,4,5,9,10,11],fl=Object.fromEntries(c.flags)
  for(;d.getUTCFullYear()===2027;d.setUTCDate(d.getUTCDate()+7)){const m=d.getUTCMonth()+1;if(!good.includes(m))continue;const iso=d.toISOString().slice(0,10),s=new Date(d);s.setUTCDate(s.getUTCDate()+2);
   const lab=d.getUTCDate()+'–'+s.getUTCDate()+(s.getUTCMonth()!==d.getUTCMonth()?' '+s.toLocaleString('en',{month:'short',timeZone:'UTC'}):'');(out[m]??=[]).push({lab,flag:fl[iso]})}return out}
 const vn=s=>{const L=vIn(CITIES[s].n);return `<span class="vn">${L.length?L.map(v=>esc(v.name)).join(' · '):'venue still to find'}</span>`};
-const BADGE={todo:'',sent:'<span class="st sent">Email sent</span>',replied:'<span class="st replied">Replied</span>',off:'<span class="st off">Bounced / declined</span>'};
+const BADGE={todo:'',sent:'<span class="st sent">Email sent</span>',replied:'<span class="st replied">Replied</span>',positive:'<span class="st positive">Positive reply</span>',off:'<span class="st off">Bounced / declined</span>'};
 function vcard(v){const row=(k,val,link)=>{if(!val)return '';if(link){const u=safeUrl(val);return u?`<dt>${k}</dt><dd><a href="${esc(u)}">${esc(val.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,''))}</a></dd>`:''}return `<dt>${k}</dt><dd>${esc(val)}</dd>`};
  const s=sentFor(v);
  return `<button class="vcard" data-v="${esc(v.id)}" aria-pressed="${v.id===selV}"><b>${esc(v.name)}</b>${BADGE[vStatus(v)]}<span class="conf">${esc((v.conf||'').split(' ')[0]||'?')} contact</span><div class="m">${esc(v.city)} · ${esc(v.cap||'capacity unknown')}</div><dl>${row('Email',v.email)}${row('Phone',v.phone)}${row('Contact',v.contact)}${s?row('Sent',s.date+(s.summary?' · '+s.summary:'')):''}${row('Played',v.fit)}${row('Address',v.address)}${row('Website',v.web,1)}${row('Social',v.social,1)}${row('Photos',v.photos,1)}</dl></button>`}
@@ -245,9 +246,16 @@ const num=x=>{const n=parseFloat(String(x??'').replace(',','.'));return isFinite
 function toVenues(rows){const H=rows[0].map(h=>String(h).toLowerCase());const ix=n=>H.findIndex(h=>h.startsWith(n));const g=(r,n)=>{const i=ix(n);return i<0?'':String(r[i]??'').replace(/^'/,'')};
  return rows.slice(1).filter(r=>g(r,'name')).map(r=>({id:g(r,'id'),name:g(r,'name'),country:g(r,'country'),city:g(r,'city'),address:g(r,'address'),lat:num(g(r,'lat')),lng:num(g(r,'lng')),cap:g(r,'capacity'),email:g(r,'booking email'),phone:g(r,'phone'),contact:g(r,'contact person'),web:g(r,'website'),social:g(r,'instagram'),photos:g(r,'photos'),fit:g(r,'metal fit'),conf:g(r,'contact confidence'),status:g(r,'status')}))}
 function toSent(rows){return rows.slice(1).filter(r=>r[2]||r[5]).map(r=>({date:String(r[0]??''),id:String(r[1]??''),name:String(r[2]??''),city:String(r[3]??''),country:String(r[4]??''),email:String(r[5]??''),subject:String(r[6]??''),link:String(r[7]??''),status:String(r[8]??''),follow:String(r[9]??''),reply:String(r[10]??''),summary:String(r[11]??'')}))}
+let GVN=0;function gviz(sheet){return new Promise((res,rej)=>{const cb='__gv'+(++GVN);const sc=document.createElement('script');const t=setTimeout(()=>{cleanup();rej('timeout')},15000);
+ function cleanup(){clearTimeout(t);delete window[cb];sc.remove()}
+ window[cb]=d=>{cleanup();try{if(!d||d.status==='error')return rej('error');const T=d.table;const H=T.cols.map(c=>c.label||'');const R=T.rows.map(r=>(r.c||[]).map(c=>c==null?'':(c.f!=null&&typeof c.v!=='number'?c.f:(c.v==null?'':c.v))));res([H,...R])}catch(e){rej(e)}};
+ sc.onerror=()=>{cleanup();rej('load')};sc.src='https://docs.google.com/spreadsheets/d/'+SHEET+'/gviz/tq?tqx=responseHandler:'+cb+'&headers=1&sheet='+encodeURIComponent(sheet)+'&_='+Date.now();document.head.appendChild(sc)})}
+async function gvizLive(){live='Connecting to the Google Sheet…';renderNav();
+ const tick=async()=>{try{const [v,s]=await Promise.all([gviz('Venues'),gviz('Sent')]);if(v.length>1){VENUES=toVenues(v);ensureCountries()}if(s.length>1)SENT=toSent(s);live='Live from Google Sheet · checked '+stamp();if(cur!=='sent'&&!COUNTRIES[cur])cur='romania';render(true)}catch(e){live='Saved copy ('+BUILT+') · live sheet not reachable';renderNav()}};
+ await tick();setInterval(tick,120000)}
 const stamp=()=>new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
 (async()=>{let mcp=null;try{mcp=window.claude&&await window.claude.use('mcp')}catch(e){}
- if(!mcp){live='Saved copy · live data not available in this view';renderNav();return}
+ if(!mcp){gvizLive();return}
  live='Connecting to your Google Sheet…';renderNav();
  const opts={refetchInterval:120000};
  const onErr=ev=>{if(ev&&ev.type==='error'){live='Live update failed · showing last data';renderNav()}};

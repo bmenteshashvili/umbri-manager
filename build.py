@@ -8,6 +8,7 @@ leaf = "--claude" not in sys.argv
 t = (root/"src/template.html").read_text()
 t = t.replace("live='Saved copy (connect to see live data)'", "live=" + repr(stamp))
 t = t.replace("live='Saved copy · live data not available in this view'", "live=" + repr(stamp))
+t = t.replace("__BUILT__", stamp.replace("'",""))
 html = t.replace("__GEO__", (root/"src/geo.json").read_text()).replace("__DATA__", (root/"src/data.js").read_text())
 if leaf:
     html = html.replace("</title>", '</title>\n<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">\n<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>', 1)
