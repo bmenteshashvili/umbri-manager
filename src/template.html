@@ -65,6 +65,7 @@ td.p{white-space:nowrap;text-align:right;font-weight:600}td.r{white-space:nowrap
 .leaflet-tooltip.clbl{font:600 13px Barlow,sans-serif;background:rgba(255,255,255,.9);border:0;box-shadow:none;padding:1px 5px}
 .leaflet-container{font:14px Barlow,sans-serif}
 .pop h3{font:600 20px 'Barlow Condensed',sans-serif;margin:0}.pop .m{color:#666;font-size:13px;margin:2px 0 8px}
+.car figure.ig{flex:0 0 100%;scroll-snap-align:start;margin:0}.car figure.ig iframe{width:100%;height:420px;border:0;border-radius:8px;background:#fff}
 .car{position:relative;margin:0 -2px}.track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:6px;border-radius:8px;scrollbar-width:none}.track::-webkit-scrollbar{display:none}
 .track figure{flex:0 0 100%;margin:0;scroll-snap-align:center}.track img{width:100%;height:190px;object-fit:cover;border-radius:8px;display:block;background:#eee}
 .track figcaption{font-size:11px;color:#777;margin-top:3px;line-height:1.3;overflow-wrap:anywhere}.track figcaption a{color:inherit}
@@ -122,10 +123,14 @@ async function photos(v){const cat=v.commons||COMMONS[v.id];if(!cat)return [];if
  if(!pages.length)pages=await q('generator=categorymembers&gcmtype=file&gcmlimit=15&gcmtitle='+encodeURIComponent('Category:'+cat));
  const out=pages.sort((a,b)=>(a.index||0)-(b.index||0)).map(p=>{const i=(p.imageinfo||[])[0]||{},m=i.extmetadata||{};return {src:i.thumburl||'',page:i.descriptionurl||'',mime:i.mime||'',by:strip(m.Artist&&m.Artist.value),lic:strip(m.LicenseShortName&&m.LicenseShortName.value)}}).filter(x=>/^https:\/\/upload\.wikimedia\.org\//.test(x.src)&&/jpe?g|png|webp/.test(x.mime));
  return PH[v.id]=out}
+const igPosts=v=>{const t=[v.photos,v.social].join(' ');const out=[];for(const m of t.matchAll(/instagram\.com\/(?:[\w.]+\/)?(?:p|reel)\/([\w-]{5,})/g))if(!out.includes(m[1]))out.push(m[1]);return out.slice(0,6)};
+function igWire(car,n){const tr=car.querySelector('.track'),cnt=car.querySelector('.cnt');const go=d=>tr.scrollBy({left:d*tr.clientWidth,behavior:'smooth'});
+ car.querySelector('.pv')?.addEventListener('click',e=>{e.stopPropagation();go(-1)});car.querySelector('.nx')?.addEventListener('click',e=>{e.stopPropagation();go(1)});
+ tr.addEventListener('scroll',()=>{cnt.textContent=(Math.round(tr.scrollLeft/tr.clientWidth)+1)+' / '+n+" · from the venue's Instagram"},{passive:true})}
 function popupEl(v){const el=document.createElement('div');el.className='pop';const st=vStatus(v);const s=sentFor(v);
  const row=(k,val)=>val?`<dt>${k}</dt><dd>${esc(val)}</dd>`:'';const pl=safeUrl(v.photos)||safeUrl(v.social)||safeUrl(v.web);
  el.innerHTML=`<h3>${esc(v.name)}</h3><div class="m">${esc(v.city)} · ${esc(v.cap||'capacity unknown')} ${BADGE[st]||''}</div><div class="car"><div class="nophoto">Loading photos…</div></div><dl>${row('Email',v.email)}${row('Phone',v.phone)}${s?row('Sent',s.date):''}${row('Played',v.fit)}</dl>${pl?`<a class="more" href="${esc(pl)}" target="_blank" rel="noopener">More photos & info ↗</a>`:''}`;
- photos(v).then(L=>{const car=el.querySelector('.car');if(!L.length){car.innerHTML=`<div class="nophoto">No free-licensed photos found yet.${pl?' Use the link below to see the venue.':''}</div>`;return}
+ const IG=igPosts(v);if(IG.length){const car=el.querySelector('.car');car.innerHTML=`<div class="track">${IG.map(c=>`<figure class="ig"><iframe src="https://www.instagram.com/p/${c}/embed" loading="lazy" title="${esc(v.name)} on Instagram" allowtransparency="true" scrolling="no"></iframe></figure>`).join('')}</div>${IG.length>1?'<button class="pv" aria-label="Previous">‹</button><button class="nx" aria-label="Next">›</button>':''}<div class="cnt">1 / ${IG.length} · from the venue's Instagram</div>`;igWire(car,IG.length)}else photos(v).then(L=>{const car=el.querySelector('.car');if(!L.length){car.innerHTML=`<div class="nophoto">No free-licensed photos found yet.${pl?' Use the link below to see the venue.':''}</div>`;return}
   car.innerHTML=`<div class="track">${L.map((p,i)=>`<figure><img loading="${i?'lazy':'eager'}" src="${esc(p.src)}" alt="${esc(v.name)} photo ${i+1}"><figcaption>${esc(p.by||'Unknown author')}${p.lic?' · '+esc(p.lic):''} · <a href="${esc(safeUrl(p.page))}" target="_blank" rel="noopener">Wikimedia Commons</a></figcaption></figure>`).join('')}</div>${L.length>1?`<button class="pv" aria-label="Previous photo">‹</button><button class="nx" aria-label="Next photo">›</button>`:''}<span class="cnt">1 / ${L.length}</span>`;
   const tr=car.querySelector('.track'),cnt=car.querySelector('.cnt');const go=d=>tr.scrollBy({left:d*tr.clientWidth,behavior:'smooth'});
   car.querySelector('.pv')?.addEventListener('click',e=>{e.stopPropagation();go(-1)});car.querySelector('.nx')?.addEventListener('click',e=>{e.stopPropagation();go(1)});
